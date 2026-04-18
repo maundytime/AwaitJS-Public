@@ -32,6 +32,85 @@ Make sure TypeScript from `package.json` is installed.
 - This is a declaration-only environment. If you need to confirm whether something exists, check the `.d.ts` files directly instead of guessing.
 - Widgets run inside a widget environment, not a full app page. Keep both the view tree and timeline small by default.
 - Design permission-related behavior as “already authorized by the host” or “currently unavailable”. Do not put first-run authorization flows inside the widget.
+- When generating a widget, also generate a small `@panel` surface by default for the main tunable values unless the user explicitly says not to. Prefer exposing text, numeric ranges, booleans, colors, modes, and the main view tree instead of every constant.
+
+## Panel Comments
+
+- `@panel` is a source comment convention. Put it immediately above the declaration it controls.
+- Value panels only work on top-level `const` declarations, including exported top-level `const` declarations.
+- Function panels work on function declarations and top-level function-valued declarations.
+- For value panels, the initializer must be a literal the panel can rewrite directly:
+  string, number, boolean, or a color literal used with `type:'color'`.
+- Do not put `@panel` on `let`, `var`, local variables inside functions, computed initializers, or private implementation details you do not want edited from the panel.
+- If you provide a payload, it must be a JS object literal after `@panel`.
+
+### Supported Types
+
+- `// @panel`
+  defaults by target kind:
+  string -> text field
+  number -> number field
+  boolean -> toggle
+  function -> XML panel
+- `// @panel {type:'slider',min:number,max:number,step?:number}`
+  for numeric top-level `const`
+- `// @panel {type:'menu',items:[...]}`
+  for string or number top-level `const`
+  use `string[]` for string values and `number[]` for number values
+- `// @panel {type:'editor'}`
+  for string top-level `const`
+- `// @panel {type:'toggle'}`
+  for boolean top-level `const`
+- `// @panel {type:'color'}`
+  for string or number color literals
+- `// @panel {type:'xml'}`
+  for functions that return widget/view JSX
+
+### Usage
+
+```tsx
+import {Color, Text, ZStack} from 'await';
+
+// @panel
+const title = 'Hello';
+
+// @panel {type:'slider',min:8,max:48,step:1}
+const fontSize = 16;
+
+// @panel {type:'menu',items:['default','rounded','serif','monospaced']}
+const fontDesign = 'default';
+
+// @panel {type:'toggle'}
+const showBackground = true;
+
+// @panel {type:'color'}
+const foreground = 'c';
+
+// @panel {type:'xml'}
+function content() {
+	return (
+		<ZStack>
+			{showBackground ? <Color value='3'/> : undefined}
+			<Text value={title} fontSize={fontSize} fontDesign={fontDesign} foreground={foreground}/>
+		</ZStack>
+	);
+}
+
+function widget() {
+	return content();
+}
+
+Await.define({
+	widget,
+});
+```
+
+### Panel Guidance
+
+- When creating a new widget, prefer defining the main adjustable inputs as top-level `const` values and annotating them with `@panel`.
+- Use `slider` for bounded numeric values, `menu` for discrete modes, `toggle` for booleans, `color` for visual tokens, and `editor` or plain `@panel` for text.
+- Add an XML panel to the main rendered function when structural tuning is useful.
+- Keep the panel small and intentional. Expose the few controls that are most likely to be changed after generation.
 
 ## Minimal Template
 
